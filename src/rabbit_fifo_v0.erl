@@ -14,7 +14,7 @@
 %% Copyright (c) 2007-2020 VMware, Inc. or its affiliates.  All rights reserved.
 %%
 
--module(rabbit_fifo).
+-module(rabbit_fifo_v0).
 
 -behaviour(ra_machine).
 
@@ -22,7 +22,7 @@
 -compile(inline).
 -compile({no_auto_import, [apply/3]}).
 
--include("rabbit_fifo.hrl").
+-include("rabbit_fifo_v0.hrl").
 -include_lib("rabbit_common/include/rabbit.hrl").
 
 -export([
@@ -32,9 +32,6 @@
          tick/2,
          overview/1,
          get_checked_out/4,
-         %% versioning
-         version/0,
-         which_module/1,
          %% aux
          init_aux/1,
          handle_aux/6,
@@ -475,10 +472,7 @@ apply(_, #purge_nodes{nodes = Nodes}, State0) ->
                                    end, {State0, []}, Nodes),
     {State, ok, Effects};
 apply(Meta, #update_config{config = Conf}, State) ->
-    checkout(Meta, update_config(Conf, State), []);
-apply(_Meta, {machine_version, 0, 1}, State) ->
-    %% quick hack to "convert" the state from version one
-    {setelement(1, State, ?MODULE), ok, []}.
+    checkout(Meta, update_config(Conf, State), []).
 
 purge_node(Node, State, Effects) ->
     lists:foldl(fun(Pid, {S0, E0}) ->
@@ -651,12 +645,6 @@ get_checked_out(Cid, From, To, #?MODULE{consumers = Consumers}) ->
         _ ->
             []
     end.
-
--spec version() -> pos_integer().
-version() -> 1.
-
-which_module(0) -> rabbit_fifo_v0;
-which_module(1) -> ?MODULE.
 
 -record(aux_gc, {last_raft_idx = 0 :: ra:index()}).
 -record(aux, {name :: atom(),
